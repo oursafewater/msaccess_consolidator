@@ -7,6 +7,9 @@ PyODBC Unit Tests: tests3\accesstests.py
 PyODBC Microsoft Access:
 https://github.com/mkleehammer/pyodbc/wiki/Connecting-to-Microsoft-Access
 
+Milestone: 10/3 @Midnight | Approximately 10 Seconds
+    [517] DB: SAMPLE LABELS (Original).mdb Table: [9] TTHM & HAA5 Lab Code Table
+
 [Article]: Microsoft Access Permissions Article (for Querying MSysObject)
     https://social.msdn.microsoft.com/Forums/sqlserver/en-US/8cd6eadd-2d9d-4dbd-8920-e2847a74f80a/
     retrieve-all-msaccess-table-names-using-openrowset-funtion-in-sql-server?forum=transactsql
@@ -27,18 +30,16 @@ https://github.com/mkleehammer/pyodbc/wiki/Connecting-to-Microsoft-Access
 #    [HOLD]  5) Produce Report Inventory Table
 
 
+
+
 import os
 import os.path
 import pyodbc
 
 DB_PATH = "C:\\Users\\Brandon\\BioMycoBit Dropbox\\"
-EXCLUSIONS = 'placeholder.mdb'
-
-
-def print_header():
-    print('-----------------------------------')
-    print('     .MDB / .ACCDB HANDLER         ')
-    print('-----------------------------------')
+EXCLUSIONS = ('placeholder.mdb',
+              'Backup of Backup of Backup of PWSWorkplan_Appendices Builder(A,D,E,F).accdb',
+              'SDWP Dashboard v0.999.01Region.accdb')
 
 
 def retrieve_fileroster(path):
@@ -141,6 +142,9 @@ def main():
         if filename in EXCLUSIONS:
             pass
         else:
+
+            print('Filename: {}'.format(filename))
+
             cnxn = pyodbc.connect(conn_str)
             crsr = cnxn.cursor()
 
