@@ -1,25 +1,20 @@
 """
 OurSafeWater : .ACCDB / .MDB Documenter
 Brandon Taylor, PE : Brandon@OurSafeWater.com
-September 30th, 2018
+October 2nd, 2018
 
 PyODBC Unit Tests: tests3\accesstests.py
+PyODBC Microsoft Access:
+https://github.com/mkleehammer/pyodbc/wiki/Connecting-to-Microsoft-Access
+
+[Article]: Microsoft Access Permissions Article (for Querying MSysObject)
+    https://social.msdn.microsoft.com/Forums/sqlserver/en-US/8cd6eadd-2d9d-4dbd-8920-e2847a74f80a/
+    retrieve-all-msaccess-table-names-using-openrowset-funtion-in-sql-server?forum=transactsql
+
+[Article]:
+    https://social.msdn.microsoft.com/Forums/en-US/79b2148a-abff-49ea-8e44-71698fa761a0/
+    user-permissions-and-database-security-in-access-2016
 """
-
-"""
-Note: Microsoft Access Database Permissions
-https://social.msdn.microsoft.com/Forums/sqlserver/en-US/8cd6eadd-2d9d-4dbd-8920-e2847a74f80a/
-retrieve-all-msaccess-table-names-using-openrowset-funtion-in-sql-server?forum=transactsql
-
-Please refer to the following steps to set permissions:
-    1.    Double click the database of Access to open it in Access;
-    2.    Choose Tools, Security, User And Group Permissions to display the User and Group Permissions dialog box;
-    3.    Select the MSysObjects table in the Object Name list, and give the Admin user permission to read data.
-After that we execute a query on the MSysObjects table, it will return the data we expect.
-
-"""
-
-
 
 # Objective
 #    i) Scan through folder (with subfolder option) and retrieve list of all
@@ -32,11 +27,6 @@ After that we execute a query on the MSysObjects table, it will return the data 
 #    5) Produce Report Inventory Table
 
 
-import subprocess
-import configparser
-import csv
-import time
-import fnmatch
 import os
 import os.path
 import pyodbc
@@ -67,50 +57,44 @@ def retrieve_fileroster(path):
     return fileroster
 
 
-def pyodbc_start():
+def pyodbc_bt_qry(cursor):
     """
-    PyODBC
-    https://github.com/mkleehammer/pyodbc/wiki/Connecting-to-Microsoft-Access
+    Have to set permissions in Microsoft Access to be able to access MSysObjects table via query
+
+        Error: ProgrammingError: ('42000', "[42000] [Microsoft][ODBC Microsoft Access Driver]
+               Record(s) cannot be read; no read permission on 'MSysObjects'. (-1907) (SQLExecDirectW)")
+
+        SQL to Retrieve Query Object List
+                SELECT MSysObjects.Name, MSysObjects.Type FROM MSysObjects WHERE (((MSysObjects.Type)=5))
+                ORDER BY MSysObjects.Name;
+
+
+    # sql_qrylist = SELECT MSysObjects.Name, MSysObjects.Type FROM MSysObjects WHERE (((MSysObjects.Type)=5))
+    #               ORDER BY MSysObjects.Name;
+    #
+    # #crsr_sql = cnxn.cursor().execute(sql_qrylist)
+    # cursor = cnxn.cursor()
+    # cursor.execute(sql_qrylist)
+    #
+    # columns = [column[0] for column in crsr_sql.description]
+    #
+    # results = []
+    #
+    # for row in crsr_sql.fetchall():
+    #     results.append(dict(zip(columns, row)))
+    #
+    # print(results)
+
     """
 
-    # ['Microsoft Access Driver (*.mdb)', 'Microsoft Access Driver (*.mdb, *.accdb)']
-    # drivers = [x for x in pyodbc.drivers() if x.startswith('Microsoft Access Driver')]
 
-    # if drivers:
+def pyodbc_bt_tbl(cursor):
+    crsr = cursor
+    tables = []
 
-    # str1 = r'DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};'
-    # str2 = r'DBQ=C:\GitHub\OurSafeWater\Data\sampledb.accdb;'
-    # conn_str = {str1, str2}
-
-    conn_str = (r'DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};'
-                r'DBQ=C:\GitHub\OurSafeWater\Data\sampledb.accdb;')
-
-    print(conn_str)
-
-    cnxn = pyodbc.connect(conn_str)
-    crsr = cnxn.cursor()
-
-    # for table_info in crsr.tables(tableType='TABLE'):
-    #    print(table_info.table_name)
-
-    # ToDo: 10/1 @21:30 | Programming Error (See Above Have To Set Admin Rights
-    # pyodbc.ProgrammingError: ('42000', "[42000] [Microsoft][ODBC Microsoft Access Driver] Record(s) cannot be read; no read permission on 'MSysObjects'. (-1907) (SQLExecDirectW)")
-
-    sql_qrylist = """SELECT MSysObjects.Name, MSysObjects.Type FROM MSysObjects WHERE (((MSysObjects.Type)=5))
-                     ORDER BY MSysObjects.Name;"""
-
-    #crsr_sql = cnxn.cursor().execute(sql_qrylist)
-    cursor = cnxn.cursor()
-    cursor.execute(sql_qrylist)
-
-    columns = [column[0] for column in crsr_sql.description]
-
-    results = []
-
-    for row in crsr_sql.fetchall():
-        results.append(dict(zip(columns, row)))
-
-    print(results)
+    for table_info in crsr.tables(tableType='TABLE'):
+        print(table_info.table_name)
+        tables.append(table_info.table_name)
 
     return None
 
@@ -119,10 +103,24 @@ def main():
     # Retrieve Fileroster
     dbs = retrieve_fileroster(DB_PATH)
 
-    # for idx, db in enumerate(dbs, 1):
-    #    print('[{}] {}'.format(idx, db))
+    # Print Fileroster
+    for idx, db in enumerate(dbs, 1):
+        print('[{}] {}'.format(idx, db))
 
-    pyodbc_start()
+    # Connect to DB
+    conn_str = (r'DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};'
+                r'DBQ=C:\GitHub\msaccess_consolidator\Data\sampledb.accdb')
+
+    cnxn = pyodbc.connect(conn_str)
+    crsr = cnxn.cursor()
+
+    # Call Table Method
+    pyodbc_bt_tbl(crsr)
+
+    # Call QueryObj Method
+    # pyodbc_bt_qry(crsr)
+
+
 
 
 if __name__ == '__main__':
