@@ -17,14 +17,14 @@ https://github.com/mkleehammer/pyodbc/wiki/Connecting-to-Microsoft-Access
 """
 
 # Objective
-#    i) Scan through folder (with subfolder option) and retrieve list of all
-#    Microsoft Access Databases found (.MDB|.ACCDB).
-#    2) Produce Table Inventory for databases found (TableName, FieldName, TableRecdCounts)
-#    3) Produce Query Inventory Table (e.g. admin_SQL) of all queries
-#       `   a) Query Object Building for Select and Crosstab Queries
-#           b) DoCmd.SQL(QueryObjName) for Update Queries, Make Table Queries, Delete Table Queries
-#    4) Produce Form Inventory Table
-#    5) Produce Report Inventory Table
+#    [DONE] i) Scan through folder (with subfolder option) and retrieve list of all
+#              Microsoft Access Databases found (.MDB|.ACCDB).
+#    [IN PROGRESS] 2) Produce Table Inventory for databases found (TableName, FieldName, TableRecdCounts)
+#    [ERROR] 3) Produce Query Inventory Table (e.g. admin_SQL) of all queries
+#                  a) Query Object Building for Select and Crosstab Queries
+#                  b) DoCmd.SQL(QueryObjName) for Update Queries, Make Table Queries, Delete Table Queries
+#    [HOLD]  4) Produce Form Inventory Table
+#    [HOLD]  5) Produce Report Inventory Table
 
 
 import os
@@ -32,7 +32,7 @@ import os.path
 import pyodbc
 
 DB_PATH = "C:\\Users\\Brandon\\BioMycoBit Dropbox\\"
-DB_TEST = "C:\\GitHub\\OurSafeWater\\Data\\sampledb.accdb"
+EXCLUSIONS = 'placeholder.mdb'
 
 
 def print_header():
@@ -88,39 +88,64 @@ def pyodbc_bt_qry(cursor):
     """
 
 
-def pyodbc_bt_tbl(cursor):
+def pyodbc_bt_tbl(cursor, dbname, idx):
     crsr = cursor
+    _, db = os.path.split(dbname)
+
     tables = []
 
     for table_info in crsr.tables(tableType='TABLE'):
-        print(table_info.table_name)
         tables.append(table_info.table_name)
+
+    for count, table in enumerate(tables, 1):
+        print('[{}] DB: {} Table: [{}] {}'.format(idx, db, count, table))
 
     return None
 
 
+def pyodbc_bt_driver():
+    """ Identify Microsoft Access Driver"""
+
+    driver_type = ['Microsoft Access Driver (*.mdb)',
+                   'Microsoft Access Driver (*.mdb, *.accdb)']
+
+    driver_list = [x for x in pyodbc.drivers() if x.startswith('Microsoft Access Driver')]
+
+    if driver_type[1] in driver_list:
+        driver = 'Microsoft Access Driver (*.mdb, *.accdb)'
+    elif driver_type[0] in driver_list:
+        driver = 'Microsoft Access Driver (*.mdb)'
+    else:
+        # ToDo: Throw Error And Exit
+        driver = '[MSACCESS DRIVER NOT FOUND]'
+
+    return driver
+
+
 def main():
-    # Retrieve Fileroster
+    # Identify Microsoft Access Driver
+    driver = pyodbc_bt_driver()
+
+    # Retrieve Microsoft Access Fileroster
     dbs = retrieve_fileroster(DB_PATH)
 
-    # Print Fileroster
+    # Connect to Database and Output File Roster
     for idx, db in enumerate(dbs, 1):
-        print('[{}] {}'.format(idx, db))
 
-    # Connect to DB
-    conn_str = (r'DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};'
-                r'DBQ=C:\GitHub\msaccess_consolidator\Data\sampledb.accdb')
+        # Generate Connection String
+        conn_str = (r'DRIVER={' + str(driver) + '};DBQ=' + str(db))
 
-    cnxn = pyodbc.connect(conn_str)
-    crsr = cnxn.cursor()
+        # Identify Filename (Split from Directory)
+        _, filename = os.path.split(db)
 
-    # Call Table Method
-    pyodbc_bt_tbl(crsr)
+        if filename in EXCLUSIONS:
+            pass
+        else:
+            cnxn = pyodbc.connect(conn_str)
+            crsr = cnxn.cursor()
 
-    # Call QueryObj Method
-    # pyodbc_bt_qry(crsr)
-
-
+            # Call Table Method
+            pyodbc_bt_tbl(crsr, filename, idx)
 
 
 if __name__ == '__main__':
